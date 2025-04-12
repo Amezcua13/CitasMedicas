@@ -1,29 +1,48 @@
-// views/NewAppointmentScreenView.js
-import React, { useRef } from "react";
-import { View, StyleSheet, Pressable, Animated } from "react-native";
-import { Text, TextInput } from "react-native-paper";
-import { Picker } from "@react-native-picker/picker";
-import { useNavigation } from "@react-navigation/native";
+import React, { useRef, useState } from "react";
+import { View, StyleSheet, Pressable, Animated, ScrollView } from "react-native";
+import { Text, Avatar, Button } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
+import { Picker } from "@react-native-picker/picker";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
+import dayjs from "dayjs";
+import { useNavigation } from "@react-navigation/native";
 import { useNewAppointmentViewModel } from "../viewmodels/NewAppointmentViewModel";
 
 const NewAppointmentView = () => {
   const navigation = useNavigation();
+  const scaleValue = useRef(new Animated.Value(1)).current;
+
   const {
     date,
+    setDate,
     time,
+    setTime,
     doctor,
+    setDoctor,
     doctorsList,
     status,
     saludo,
-    setDate,
-    setTime,
-    setDoctor,
-    setStatus,
+    availableTimes,
+    getAvailableTimes,
     handleScheduleAppointment,
   } = useNewAppointmentViewModel(navigation);
 
-  const scaleValue = useRef(new Animated.Value(1)).current;
+  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+
+  const showDatePicker = () => setDatePickerVisibility(true);
+  const hideDatePicker = () => setDatePickerVisibility(false);
+
+  const handleConfirm = (selectedDate) => {
+    const formatted = dayjs(selectedDate).format("DD/MM/YY");
+    setDate(formatted);
+    if (doctor) getAvailableTimes(formatted, doctor);
+    hideDatePicker();
+  };
+
+  const handleDoctorChange = (value) => {
+    setDoctor(value);
+    if (date) getAvailableTimes(date, value);
+  };
 
   const handlePressIn = () => {
     Animated.spring(scaleValue, {
@@ -41,113 +60,155 @@ const NewAppointmentView = () => {
 
   return (
     <LinearGradient colors={["#0D47A1", "#1976D2"]} style={styles.container}>
-      <View style={styles.header}>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <Avatar.Icon size={80} icon="calendar-plus" style={styles.icon} color="#FFF" />
         <Text style={styles.saludo}>{saludo}</Text>
-        <Text style={styles.titulo}>Agendar Nueva Cita</Text>
-      </View>
+        <Text style={styles.title}>Agendar nueva cita</Text>
 
-      <View style={styles.form}>
-        <TextInput
-          label="Fecha (DD/MM/AA)"
-          mode="outlined"
-          style={styles.input}
-          value={date}
-          onChangeText={setDate}
-        />
-
-        <TextInput
-          label="Hora"
-          mode="outlined"
-          style={styles.input}
-          value={time}
-          onChangeText={setTime}
-        />
-
+        <Text style={styles.label}>Selecciona doctor</Text>
         <View style={styles.pickerContainer}>
-          <Text style={styles.label}>Selecciona un Doctor</Text>
           <Picker
             selectedValue={doctor}
-            onValueChange={(itemValue) => setDoctor(itemValue)}
+            onValueChange={handleDoctorChange}
             style={styles.picker}
           >
-            <Picker.Item label="Seleccione un doctor" value="" />
+            <Picker.Item label="Selecciona un doctor" value="" />
             {doctorsList.map((doc) => (
               <Picker.Item key={doc.value} label={doc.label} value={doc.value} />
             ))}
           </Picker>
         </View>
 
-        <Picker
-          selectedValue={status}
-          onValueChange={(itemValue) => setStatus(itemValue)}
+        <Button
+          mode="contained-tonal"
+          onPress={showDatePicker}
+          style={styles.dateButton}
         >
-          <Picker.Item label="Pendiente" value="pendiente" color="#FFA000" />
-          <Picker.Item label="Confirmada" value="confirmada" color="#1976D2" />
-          <Picker.Item label="Finalizada" value="finalizada" color="#2E7D32" />
-        </Picker>
+          {date ? `📅 ${date}` : "Elegir Fecha"}
+        </Button>
+
+        <DateTimePickerModal
+          isVisible={isDatePickerVisible}
+          mode="date"
+          onConfirm={handleConfirm}
+          onCancel={hideDatePicker}
+          minimumDate={new Date()}
+        />
+
+        {doctor && date && (
+          <>
+            <Text style={styles.label}>Horarios disponibles:</Text>
+            <View style={styles.timesGrid}>
+              {availableTimes.length > 0 ? (
+                availableTimes.map((hora) => (
+                  <Pressable
+                    key={hora}
+                    onPress={() => setTime(hora)}
+                    style={[
+                      styles.timeCard,
+                      time === hora && styles.timeCardSelected,
+                    ]}
+                  >
+                    <Text style={styles.timeText}>{hora}</Text>
+                  </Pressable>
+                ))
+              ) : (
+                <Text style={styles.noTimes}>No hay horarios disponibles</Text>
+              )}
+            </View>
+          </>
+        )}
 
         <Pressable
           onPress={handleScheduleAppointment}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
-          style={styles.scheduleButton}
+          style={({ pressed }) => [
+            styles.submitButton,
+            { transform: [{ scale: pressed ? 0.95 : 1 }] },
+          ]}
         >
-          <Text style={styles.scheduleButtonText}>📅 Agendar Cita</Text>
+          <Text style={styles.submitText}>Agendar cita</Text>
         </Pressable>
-
-        <Pressable
-          onPress={() => navigation.navigate("Appointments")}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          style={styles.cancelButton}
-        >
-          <Text style={styles.cancelButtonText}>❌ Cancelar</Text>
-        </Pressable>
-      </View>
+      </ScrollView>
     </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, paddingTop: 50 },
-  header: { alignItems: "center", marginBottom: 20 },
-  saludo: { fontSize: 20, color: "#FFFFFF" },
-  titulo: { fontSize: 24, fontWeight: "bold", color: "#FFFFFF" },
-  form: {
-    backgroundColor: "#FFFFFF",
+  container: { flex: 1 },
+  scroll: {
     padding: 20,
-    borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    elevation: 5,
+    alignItems: "center",
   },
-  input: { marginBottom: 10, backgroundColor: "#FFF" },
-  pickerContainer: { marginBottom: 15 },
-  label: { fontWeight: "bold", marginBottom: 5, fontSize: 16 },
-  picker: { backgroundColor: "#f0f0f0", borderRadius: 8 },
-  scheduleButton: {
-    backgroundColor: "#4CAF50",
-    padding: 15,
+  icon: {
+    backgroundColor: "#FFA500",
+    marginBottom: 10,
+  },
+  saludo: {
+    fontSize: 18,
+    color: "#FFF",
+    fontWeight: "bold",
+  },
+  title: {
+    fontSize: 22,
+    color: "#FFA500",
+    marginBottom: 15,
+  },
+  pickerContainer: {
+    width: "100%",
+    backgroundColor: "#FFF",
+    borderRadius: 6,
+    marginBottom: 15,
+  },
+  picker: {
+    width: "100%",
+  },
+  label: {
+    color: "#FFF",
+    fontWeight: "bold",
+    alignSelf: "flex-start",
+    marginBottom: 4,
+  },
+  dateButton: {
+    width: "100%",
+    marginBottom: 15,
+  },
+  timesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  timeCard: {
+    padding: 10,
+    margin: 6,
+    backgroundColor: "#FFF",
+    borderRadius: 8,
+  },
+  timeCardSelected: {
+    backgroundColor: "#FFA500",
+  },
+  timeText: {
+    fontWeight: "bold",
+    color: "#000",
+  },
+  noTimes: {
+    color: "#FFF",
+    fontStyle: "italic",
+    marginVertical: 10,
+  },
+  submitButton: {
+    backgroundColor: "#FFF",
+    padding: 12,
     borderRadius: 30,
     alignItems: "center",
     marginTop: 10,
+    width: "100%",
   },
-  scheduleButtonText: {
-    color: "#FFFFFF",
+  submitText: {
     fontWeight: "bold",
-    fontSize: 16,
-  },
-  cancelButton: {
-    backgroundColor: "#D32F2F",
-    padding: 15,
-    borderRadius: 30,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  cancelButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
+    color: "#1976D2",
     fontSize: 16,
   },
 });

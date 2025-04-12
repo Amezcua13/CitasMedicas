@@ -2,6 +2,7 @@ import React, { useRef } from "react";
 import { View, StyleSheet, Pressable, Animated } from "react-native";
 import { Text, TextInput, Avatar } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
+import { Picker } from "@react-native-picker/picker";
 import { useRegisterViewModel } from "../viewmodels/RegisterViewModel";
 
 const RegisterView = () => {
@@ -14,6 +15,8 @@ const RegisterView = () => {
     setEmail,
     password,
     setPassword,
+    role,
+    setRole,
     saludo,
     handleRegister,
     navigation,
@@ -63,6 +66,18 @@ const RegisterView = () => {
         onChangeText={setPassword}
       />
 
+      <View style={styles.pickerContainer}>
+        <Text style={styles.label}>Rol</Text>
+        <Picker
+          selectedValue={role}
+          onValueChange={(itemValue) => setRole(itemValue)}
+          style={styles.picker}
+        >
+          <Picker.Item label="Paciente" value="patient" />
+          <Picker.Item label="Doctor" value="doctor" />
+        </Picker>
+      </View>
+
       <Pressable
         onPress={handleRegister}
         onPressIn={handlePressIn}
@@ -109,6 +124,20 @@ const styles = StyleSheet.create({
     width: "100%",
     marginBottom: 10,
     backgroundColor: "#FFF",
+  },
+  pickerContainer: {
+    width: "100%",
+    marginBottom: 15,
+    backgroundColor: "#FFF",
+    borderRadius: 5,
+    padding: 5,
+  },
+  label: {
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  picker: {
+    width: "100%",
   },
   registerButton: {
     width: "100%",
